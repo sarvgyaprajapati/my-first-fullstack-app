@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welcome</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+  .wrapper { text-align: center; position: relative; }
+  #siteName {
+    font-size: 3rem;
+    color: #ffffff;
+    font-weight: 700;
+    opacity: 0;
+    transform: scale(0.7);
+    animation: fadeInScale 1.2s ease forwards;
+    letter-spacing: 1px;
+  }
+  @keyframes fadeInScale {
+    to { opacity: 1; transform: scale(1); }
+  }
+  .subtitle {
+    margin-top: 12px;
+    color: #b9b6d3;
+    opacity: 0;
+    animation: fadeInScale 1.2s ease forwards 0.4s;
+  }
+  #editBtn {
+    margin-top: 20px;
+    display: none;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s, transform 0.15s;
+  }
+  #editBtn:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
+  #editArea { display: none; margin-top: 16px; }
+  #editInput {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    width: 260px;
+  }
+  #saveBtn {
+    margin-left: 8px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #6c63ff;
+    color: #fff;
+    cursor: pointer;
+  }
+  #saveBtn:hover { background: #5a52e0; }
+  #statusMsg { margin-top: 10px; font-size: 0.85rem; color: #ffb3b3; }
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div id="siteName">Loading...</div>
+    <div class="subtitle">Aapki personal community</div>
+
+    <button id="editBtn">✏️ Naam edit karein</button>
+    <div id="editArea">
+      <input type="text" id="editInput" placeholder="Naya naam likhein" />
+      <button id="saveBtn">Save</button>
+    </div>
+    <div id="statusMsg"></div>
+  </div>
+
+<script>
+  const API_BASE = 'http://localhost:5000';
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+
+  const siteNameEl = document.getElementById('siteName');
+  const editBtn = document.getElementById('editBtn');
+  const editArea = document.getElementById('editArea');
+  const editInput = document.getElementById('editInput');
+  const statusMsg = document.getElementById('statusMsg');
+
+  let autoRedirectTimer = null;
+
+  async function loadSiteName() {
+    try {
+      const res = await fetch(`${API_BASE}/api/site-settings/name`);
+      const data = await res.json();
+      siteNameEl.textContent = data.site_name || 'My Website';
+    } catch (err) {
+      siteNameEl.textContent = 'My Website';
+      statusMsg.textContent = 'Site name load nahi ho paaya (backend chal raha hai?)';
+    }
+
+    // Sirf owner ko hi edit button dikhega
+    if (token && role === 'owner') {
+      editBtn.style.display = 'inline-block';
+      clearTimeout(autoRedirectTimer); // owner ko jaldi redirect mat karo, use edit karne do
+    } else {
+      // 2.5 second baad login page par le jao
+      autoRedirectTimer = setTimeout(() => {
+        window.location.href = 'login.html';
+      }, 2500);
+    }
+  }
+
+  editBtn.addEventListener('click', () => {
+    editInput.value = siteNameEl.textContent;
+    editArea.style.display = 'block';
+    editBtn.style.display = 'none';
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    const newName = editInput.value.trim();
+    if (!newName) {
+      statusMsg.textContent = 'Naam khali nahi ho sakta.';
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/site-settings/name`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ value: newName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        statusMsg.textContent = data.error || 'Save nahi ho paaya.';
+        return;
+      }
+      siteNameEl.textContent = data.site_name;
+      editArea.style.display = 'none';
+      editBtn.style.display = 'inline-block';
+      statusMsg.style.color = '#a3f7bf';
+      statusMsg.textContent = 'Save ho gaya!';
+    } catch (err) {
+      statusMsg.textContent = 'Network error: server se connect nahi ho paaya.';
+    }
+  });
+
+  loadSiteName();
+</script>
+</body>
+</html>

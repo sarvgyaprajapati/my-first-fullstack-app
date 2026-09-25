@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Login</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+  body {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  }
+  .card {
+    width: 360px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 28px;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: rise 0.6s ease forwards;
+  }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
+  .tabs { display: flex; margin-bottom: 20px; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.2); }
+  .tab {
+    flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #ccc; font-size: 0.9rem;
+    transition: background 0.25s, color 0.25s;
+  }
+  .tab.active { background: #6c63ff; color: #fff; }
+
+  h2 { color: #fff; margin-bottom: 16px; font-size: 1.3rem; text-align: center; }
+
+  input {
+    width: 100%; padding: 10px 12px; margin-bottom: 12px; border-radius: 8px; border: none;
+    outline: none; font-size: 0.95rem;
+  }
+  button.primary {
+    width: 100%; padding: 11px; border: none; border-radius: 8px; background: #6c63ff; color: #fff;
+    cursor: pointer; font-size: 1rem; transition: background 0.2s, transform 0.15s;
+  }
+  button.primary:hover { background: #5a52e0; transform: scale(1.02); }
+
+  .switchLink { text-align: center; margin-top: 10px; font-size: 0.85rem; color: #b9b6d3; cursor: pointer; }
+  .switchLink:hover { color: #fff; }
+
+  .msg { text-align: center; margin-top: 10px; font-size: 0.85rem; min-height: 18px; }
+  .msg.error { color: #ffb3b3; }
+  .msg.success { color: #a3f7bf; }
+
+  .formBlock { display: none; }
+  .formBlock.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-tab="user">User</div>
+      <div class="tab" data-tab="owner">Owner</div>
+    </div>
+
+    <!-- USER: login form -->
+    <div class="formBlock active" id="userLoginBlock">
+      <h2>User Login</h2>
+      <input type="email" id="userLoginEmail" placeholder="Email" />
+      <input type="password" id="userLoginPassword" placeholder="Password" />
+      <button class="primary" id="userLoginBtn">Login</button>
+      <div class="switchLink" id="goToSignup">Account nahi hai? Signup karein</div>
+    </div>
+
+    <!-- USER: signup form -->
+    <div class="formBlock" id="userSignupBlock">
+      <h2>User Signup</h2>
+      <input type="text" id="signupName" placeholder="Naam" />
+      <input type="email" id="signupEmail" placeholder="Email" />
+      <input type="password" id="signupPassword" placeholder="Password (kam se kam 6 characters)" />
+      <button class="primary" id="userSignupBtn">Signup</button>
+      <div class="switchLink" id="goToLogin">Pehle se account hai? Login karein</div>
+    </div>
+
+    <!-- OWNER login -->
+    <div class="formBlock" id="ownerLoginBlock">
+      <h2>Owner Login</h2>
+      <input type="email" id="ownerEmail" placeholder="Owner Email" />
+      <input type="password" id="ownerPassword" placeholder="Owner Password" />
+      <button class="primary" id="ownerLoginBtn">Owner Login</button>
+    </div>
+
+    <div class="msg" id="msg"></div>
+  </div>
+
+<script>
+  const API_BASE = 'http://localhost:5000';
+  const msgEl = document.getElementById('msg');
+
+  function showMsg(text, type) {
+    msgEl.textContent = text;
+    msgEl.className = 'msg ' + (type || '');
+  }
+
+  function showBlock(id) {
+    document.querySelectorAll('.formBlock').forEach((b) => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    showMsg('', '');
+  }
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      if (tab.dataset.tab === 'user') showBlock('userLoginBlock');
+      else showBlock('ownerLoginBlock');
+    });
+  });
+
+  document.getElementById('goToSignup').addEventListener('click', () => showBlock('userSignupBlock'));
+  document.getElementById('goToLogin').addEventListener('click', () => showBlock('userLoginBlock'));
+
+  function goToFeed(token, role, name) {
+    localStorage.setItem('token', token);
+    localStorage.setItem('role', role);
+    localStorage.setItem('name', name);
+    window.location.href = 'feed.html';
+  }
+
+  async function doLogin(email, password) {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login fail ho gaya.');
+    return data;
+  }
+
+  document.getElementById('userLoginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('userLoginEmail').value;
+    const password = document.getElementById('userLoginPassword').value;
+    if (!email || !password) return showMsg('Email aur password bharein.', 'error');
+    try {
+      const data = await doLogin(email, password);
+      showMsg('Login safal!', 'success');
+      setTimeout(() => goToFeed(data.token, data.user.role, data.user.name), 400);
+    } catch (err) {
+      showMsg(err.message, 'error');
+    }
+  });
+
+  document.getElementById('ownerLoginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('ownerEmail').value;
+    const password = document.getElementById('ownerPassword').value;
+    if (!email || !password) return showMsg('Email aur password bharein.', 'error');
+    try {
+      const data = await doLogin(email, password);
+      if (data.user.role !== 'owner') {
+        showMsg('Ye account owner nahi hai.', 'error');
+        return;
+      }
+      showMsg('Owner login safal!', 'success');
+      setTimeout(() => goToFeed(data.token, data.user.role, data.user.name), 400);
+    } catch (err) {
+      showMsg(err.message, 'error');
+    }
+  });
+
+  document.getElementById('userSignupBtn').addEventListener('click', async () => {
+    const name = document.getElementById('signupName').value;
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+    if (!name || !email || !password) return showMsg('Sabhi fields bharein.', 'error');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Signup fail ho gaya.');
+      showMsg('Signup safal!', 'success');
+      setTimeout(() => goToFeed(data.token, data.user.role, data.user.name), 400);
+    } catch (err) {
+      showMsg(err.message, 'error');
+    }
+  });
+</script>
+</body>
+</html>
