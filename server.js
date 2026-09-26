@@ -7,7 +7,7 @@ const streamifier = require('streamifier');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getDb, initDb } = require('./db');
-const { authenticate, requireRole } = require('./middleware/auth');
+const { authenticate, requireRole } = require('./auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
